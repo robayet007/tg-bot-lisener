@@ -203,7 +203,8 @@ def send_message_raw():
                 "error": "Listener loop not running"
             }), 503
         
-        # Extract topupResult status from MongoDB
+        # Extract full topupResult from MongoDB or response data
+        topup_result = None
         status = None
         if bot_listener.mongo_collection is not None:
             try:
@@ -216,18 +217,20 @@ def send_message_raw():
                 
                 if response_data:
                     message_id = response_data.get("message_id")
-                    # Check if status is already in response raw_data
+                    # Check if topupResult is already in response raw_data
                     if response_data.get("raw_data") and response_data["raw_data"].get("topupResult"):
-                        status = response_data["raw_data"]["topupResult"].get("status")
+                        topup_result = response_data["raw_data"]["topupResult"]
+                        status = topup_result.get("status")
                 
-                # If status not found in response, query MongoDB by message_id
-                if not status and message_id:
+                # If topupResult not found in response, query MongoDB by message_id
+                if not topup_result and message_id:
                     mongo_doc = bot_listener.mongo_collection.find_one({"message_id": message_id})
                     if mongo_doc and mongo_doc.get("topupResult"):
-                        status = mongo_doc["topupResult"].get("status")
+                        topup_result = mongo_doc["topupResult"]
+                        status = topup_result.get("status")
                 
                 # If still not found, try to get latest topupResult document
-                if not status:
+                if not topup_result:
                     # Find latest document with topupResult
                     latest_doc = bot_listener.mongo_collection.find_one(
                         {"topupResult": {"$exists": True}},
@@ -241,12 +244,14 @@ def send_message_raw():
                                 doc_datetime = datetime.fromisoformat(doc_date.replace('Z', '+00:00'))
                                 now = datetime.now(doc_datetime.tzinfo) if doc_datetime.tzinfo else datetime.now()
                                 if (now - doc_datetime.replace(tzinfo=None)).total_seconds() < 30:
-                                    status = latest_doc["topupResult"].get("status")
+                                    topup_result = latest_doc["topupResult"]
+                                    status = topup_result.get("status")
                             except:
-                                # If date parsing fails, use the status anyway
-                                status = latest_doc["topupResult"].get("status")
+                                # If date parsing fails, use the topupResult anyway
+                                topup_result = latest_doc["topupResult"]
+                                status = topup_result.get("status")
             except Exception as e:
-                print(f"Error extracting status from MongoDB: {e}")
+                print(f"Error extracting topupResult from MongoDB: {e}")
                 import traceback
                 traceback.print_exc()
         
@@ -255,10 +260,23 @@ def send_message_raw():
         final_status = status or "pending"
         api_success = final_status != "failed"
         
-        return jsonify({
+        # Build response
+        response_data = {
             "success": api_success,
             "status": final_status
-        })
+        }
+        
+        # If status is "success", include uid and usedUc
+        if final_status == "success" and topup_result:
+            # Extract uid from topupResult.user.uid
+            if topup_result.get("user") and topup_result["user"].get("uid"):
+                response_data["uid"] = topup_result["user"]["uid"]
+            
+            # Extract usedUc from topupResult.payment.usedUc
+            if topup_result.get("payment") and topup_result["payment"].get("usedUc"):
+                response_data["usedUc"] = topup_result["payment"]["usedUc"]
+        
+        return jsonify(response_data)
         
     except Exception as e:
         return jsonify({
