@@ -7,7 +7,7 @@ $appName = "tg-bot-lisener"
 
 if (-not (Test-Path $sessionFile)) {
     Write-Host "Error: Session file not found: $sessionFile" -ForegroundColor Red
-    Write-Host "Please authenticate locally first by running: python api_server.py" -ForegroundColor Yellow
+    Write-Host "Please authenticate locally first by running: python app.py" -ForegroundColor Yellow
     exit 1
 }
 

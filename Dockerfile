@@ -25,4 +25,4 @@ RUN mkdir -p /app/sessions && chmod 755 /app/sessions
 EXPOSE 8080
 
 # Run the application
-CMD ["python", "api_server.py"]
+CMD ["python", "app.py"]

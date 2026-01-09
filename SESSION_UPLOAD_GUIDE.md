@@ -89,6 +89,6 @@ Session file on Fly.io is invalid/expired. Need to upload a fresh, valid session
 
 - The session file MUST be valid and authorized locally before uploading
 - Test local session: `python test_session.py`
-- If local session is invalid, authenticate locally first: `python api_server.py`
+- If local session is invalid, authenticate locally first: `python app.py`
 - The retry mechanism will automatically try to initialize every 30 seconds
 - No need to restart the app after uploading

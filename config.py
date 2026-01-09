@@ -1,5 +1,29 @@
 import os
+import json
+import time
 from datetime import datetime
+
+# Debug logging helper
+def debug_log(location, message, data=None, hypothesis_id=None):
+    """Write debug log to file"""
+    try:
+        log_path = r"c:\Users\mroba\OneDrive\Desktop\tg-bot-lisener\.cursor\debug.log"
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "location": location,
+            "message": message,
+            "data": data or {},
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": hypothesis_id
+        }
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry) + '\n')
+    except Exception as e:
+        # Print to console if file logging fails
+        print(f"[DEBUG LOG ERROR] {e}")
 
 # Telegram API Credentials
 API_ID = int(os.getenv("API_ID", "37118739"))
@@ -100,18 +124,42 @@ def delete_session_file_safe():
     Returns:
         tuple: (success: bool, deleted_files: list, errors: list)
     """
+    # #region agent log
+    debug_log("config.py:95", "delete_session_file_safe() called", {}, "E")
+    # #endregion
     deleted_files = []
     errors = []
     
     # Delete main session file
     session_path = get_session_file_path()
+    # #region agent log
+    file_exists = os.path.exists(session_path)
+    file_age = None
+    if file_exists:
+        try:
+            mod_time = os.path.getmtime(session_path)
+            file_age = (time.time() - mod_time) if 'time' in globals() else None
+        except:
+            pass
+    debug_log("config.py:108", "Before deleting session file", {
+        "session_path": session_path,
+        "file_exists": file_exists,
+        "file_age_seconds": file_age
+    }, "E")
+    # #endregion
     if os.path.exists(session_path):
         try:
             file_size = os.path.getsize(session_path)
             os.remove(session_path)
             deleted_files.append(f"{session_path} ({file_size} bytes)")
+            # #region agent log
+            debug_log("config.py:111", "Session file deleted", {"file_size": file_size, "path": session_path}, "E")
+            # #endregion
         except Exception as e:
             errors.append(f"Error deleting {session_path}: {e}")
+            # #region agent log
+            debug_log("config.py:114", "Error deleting session file", {"error": str(e), "error_type": type(e).__name__}, "E")
+            # #endregion
     
     # Delete session journal file if it exists
     journal_path = session_path + "-journal"
@@ -124,5 +172,12 @@ def delete_session_file_safe():
             errors.append(f"Error deleting {journal_path}: {e}")
     
     success = len(deleted_files) > 0 and len(errors) == 0
+    # #region agent log
+    debug_log("config.py:127", "delete_session_file_safe() completed", {
+        "success": success,
+        "deleted_count": len(deleted_files),
+        "error_count": len(errors)
+    }, "E")
+    # #endregion
     return success, deleted_files, errors
 

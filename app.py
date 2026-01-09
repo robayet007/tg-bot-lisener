@@ -114,7 +114,7 @@ def check_and_authenticate():
             try:
                 # Connect to check if we're authorized
                 # #region agent log
-                debug_log("api_server.py:90", "check_auth() started", {
+                debug_log("app.py:90", "check_auth() started", {
                     "session_path": session_info.get('path'),
                     "session_exists": session_exists,
                     "session_size": session_info.get('size', 0)
@@ -124,18 +124,18 @@ def check_and_authenticate():
                 await temp_listener.client.connect()
                 print("  ✓ Connected to Telegram")
                 # #region agent log
-                debug_log("api_server.py:95", "Telegram connection established", {}, "A")
+                debug_log("app.py:95", "Telegram connection established", {}, "A")
                 # #endregion
                 
                 # Try to get user info first (better diagnostics)
                 # #region agent log
-                debug_log("api_server.py:98", "Attempting get_me()", {"session_path": session_info.get('path')}, "A")
+                debug_log("app.py:98", "Attempting get_me()", {"session_path": session_info.get('path')}, "A")
                 # #endregion
                 try:
                     me = await temp_listener.client.get_me()
                     if me:
                         # #region agent log
-                        debug_log("api_server.py:101", "get_me() succeeded", {"username": me.username, "first_name": me.first_name}, "A")
+                        debug_log("app.py:101", "get_me() succeeded", {"username": me.username, "first_name": me.first_name}, "A")
                         # #endregion
                         print(f"✓ Already authenticated! Session file is valid.")
                         print(f"  Connected as: {me.first_name} (@{me.username if me.username else 'no username'})")
@@ -143,17 +143,17 @@ def check_and_authenticate():
                         return True
                 except Exception as get_me_error:
                     # #region agent log
-                    debug_log("api_server.py:106", "get_me() failed", {"error": str(get_me_error), "error_type": type(get_me_error).__name__}, "A")
+                    debug_log("app.py:106", "get_me() failed", {"error": str(get_me_error), "error_type": type(get_me_error).__name__}, "A")
                     # #endregion
                     print(f"  ⚠ Could not get user info: {get_me_error}")
                 
                 # Check if already authorized
                 # #region agent log
-                debug_log("api_server.py:109", "Checking is_user_authorized()", {}, "D")
+                debug_log("app.py:109", "Checking is_user_authorized()", {}, "D")
                 # #endregion
                 is_authorized = await temp_listener.client.is_user_authorized()
                 # #region agent log
-                debug_log("api_server.py:109", "is_user_authorized() result", {"is_authorized": is_authorized}, "D")
+                debug_log("app.py:109", "is_user_authorized() result", {"is_authorized": is_authorized}, "D")
                 # #endregion
                 if is_authorized:
                     print("✓ Already authenticated! Session file is valid.")
@@ -171,7 +171,7 @@ def check_and_authenticate():
                             session_file_age = (datetime.now() - mod_time.replace(tzinfo=None)).total_seconds()
                         except:
                             pass
-                    debug_log("api_server.py:116", "Entering non-interactive auth failure path", {
+                    debug_log("app.py:116", "Entering non-interactive auth failure path", {
                         "is_non_interactive": is_non_interactive,
                         "session_file_size": session_info.get('size', 0),
                         "session_file_age_seconds": session_file_age,
@@ -194,7 +194,7 @@ def check_and_authenticate():
                             print(f"⚠ Session file was modified {session_file_age:.0f} seconds ago (recent upload)")
                             print(f"⚠ Skipping deletion to allow fresh session file to initialize")
                             # #region agent log
-                            debug_log("api_server.py:176", "Skipping deletion - recent upload", {
+                            debug_log("app.py:176", "Skipping deletion - recent upload", {
                                 "file_age_seconds": session_file_age,
                                 "threshold_seconds": 300
                             }, "B")
@@ -203,7 +203,7 @@ def check_and_authenticate():
                         # Check if retry mechanism is active
                         # #region agent log
                         global retry_active, listener_thread
-                        debug_log("api_server.py:186", "Before deletion check", {
+                        debug_log("app.py:186", "Before deletion check", {
                             "should_delete": should_delete,
                             "retry_active": retry_active if 'retry_active' in globals() else None,
                             "listener_thread_alive": listener_thread.is_alive() if listener_thread and 'listener_thread' in globals() else None,
@@ -222,7 +222,7 @@ def check_and_authenticate():
                             errors = []
                         
                             # #region agent log
-                            debug_log("api_server.py:195", "After deletion", {
+                            debug_log("app.py:195", "After deletion", {
                                 "success": success,
                                 "deleted_files": deleted_files,
                                 "errors": errors,

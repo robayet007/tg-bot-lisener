@@ -14,7 +14,7 @@ def upload_session_file():
     
     if not os.path.exists(session_file):
         print(f"Error: Session file not found: {session_file}")
-        print("Please authenticate locally first by running: python api_server.py")
+        print("Please authenticate locally first by running: python app.py")
         return False
     
     print(f"Reading session file: {session_file}")

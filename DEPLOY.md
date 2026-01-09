@@ -58,7 +58,7 @@ Fly.io-তে প্রথমবার authentication করতে হলে:
 1. **Local-এ authenticate করুন:**
    ```bash
    # Local-এ run করুন
-   python api_server.py
+   python app.py
    ```
    এটি একটি session file তৈরি করবে (`telegram_listener.session`)
 

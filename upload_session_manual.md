@@ -8,7 +8,7 @@ Session file on Fly.io is invalid/expired. Need to upload a fresh session file.
 ### Step 1: Verify Local Session File is Valid
 ```powershell
 # Test if local session is valid
-python api_server.py
+python app.py
 # If it asks for authentication, authenticate locally first
 # Then stop the server (Ctrl+C)
 ```
