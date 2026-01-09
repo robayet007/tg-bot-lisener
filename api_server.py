@@ -594,11 +594,11 @@ def send_message_raw():
                 "error": "Listener loop not running"
             }), 503
         
-        # Extract topupResult data from MongoDB
+        # Extract full topupResult from MongoDB or response data
+        topup_result = None
         status = None
         uid = None
         used_uc_cards = []
-        topup_result_doc = None
         
         if bot_listener.mongo_collection is not None:
             try:
@@ -613,34 +613,34 @@ def send_message_raw():
                     message_id = response_data.get("message_id")
                     # Check if topupResult is already in response raw_data
                     if response_data.get("raw_data") and response_data["raw_data"].get("topupResult"):
-                        topup_result_doc = response_data["raw_data"]["topupResult"]
-                        status = topup_result_doc.get("status")
-                        if topup_result_doc.get("user"):
-                            uid = topup_result_doc["user"].get("uid")
-                        if topup_result_doc.get("payment") and topup_result_doc["payment"].get("usedUc"):
-                            used_uc_obj = topup_result_doc["payment"]["usedUc"]
+                        topup_result = response_data["raw_data"]["topupResult"]
+                        status = topup_result.get("status")
+                        if topup_result.get("user"):
+                            uid = topup_result["user"].get("uid")
+                        if topup_result.get("payment") and topup_result["payment"].get("usedUc"):
+                            used_uc_obj = topup_result["payment"]["usedUc"]
                             if isinstance(used_uc_obj, dict) and used_uc_obj.get("codes"):
                                 used_uc_cards = [card.get("code") for card in used_uc_obj["codes"] if card.get("code")]
                             elif isinstance(used_uc_obj, list):
                                 used_uc_cards = [card.get("code") if isinstance(card, dict) else str(card) for card in used_uc_obj]
                 
-                # If not found in response, query MongoDB by message_id
-                if not topup_result_doc and message_id:
+                # If topupResult not found in response, query MongoDB by message_id
+                if not topup_result and message_id:
                     mongo_doc = bot_listener.mongo_collection.find_one({"message_id": message_id})
                     if mongo_doc and mongo_doc.get("topupResult"):
-                        topup_result_doc = mongo_doc["topupResult"]
-                        status = topup_result_doc.get("status")
-                        if topup_result_doc.get("user"):
-                            uid = topup_result_doc["user"].get("uid")
-                        if topup_result_doc.get("payment") and topup_result_doc["payment"].get("usedUc"):
-                            used_uc_obj = topup_result_doc["payment"]["usedUc"]
+                        topup_result = mongo_doc["topupResult"]
+                        status = topup_result.get("status")
+                        if topup_result.get("user"):
+                            uid = topup_result["user"].get("uid")
+                        if topup_result.get("payment") and topup_result["payment"].get("usedUc"):
+                            used_uc_obj = topup_result["payment"]["usedUc"]
                             if isinstance(used_uc_obj, dict) and used_uc_obj.get("codes"):
                                 used_uc_cards = [card.get("code") for card in used_uc_obj["codes"] if card.get("code")]
                             elif isinstance(used_uc_obj, list):
                                 used_uc_cards = [card.get("code") if isinstance(card, dict) else str(card) for card in used_uc_obj]
                 
                 # If still not found, try to get latest topupResult document
-                if not topup_result_doc:
+                if not topup_result:
                     # Find latest document with topupResult
                     latest_doc = bot_listener.mongo_collection.find_one(
                         {"topupResult": {"$exists": True}},
@@ -661,12 +661,12 @@ def send_message_raw():
                                 use_this_doc = True
                         
                         if use_this_doc:
-                            topup_result_doc = latest_doc["topupResult"]
-                            status = topup_result_doc.get("status")
-                            if topup_result_doc.get("user"):
-                                uid = topup_result_doc["user"].get("uid")
-                            if topup_result_doc.get("payment") and topup_result_doc["payment"].get("usedUc"):
-                                used_uc_obj = topup_result_doc["payment"]["usedUc"]
+                            topup_result = latest_doc["topupResult"]
+                            status = topup_result.get("status")
+                            if topup_result.get("user"):
+                                uid = topup_result["user"].get("uid")
+                            if topup_result.get("payment") and topup_result["payment"].get("usedUc"):
+                                used_uc_obj = topup_result["payment"]["usedUc"]
                                 if isinstance(used_uc_obj, dict) and used_uc_obj.get("codes"):
                                     used_uc_cards = [card.get("code") for card in used_uc_obj["codes"] if card.get("code")]
                                 elif isinstance(used_uc_obj, list):
@@ -681,18 +681,29 @@ def send_message_raw():
         final_status = status or "pending"
         api_success = final_status != "failed"
         
+        # Build response
         response_data = {
             "success": api_success,
             "status": final_status
         }
         
-        # Add uid if available
+        # Add uid if available (extracted from topup_result or use pre-extracted uid)
         if uid:
             response_data["uid"] = uid
+        elif topup_result and topup_result.get("user") and topup_result["user"].get("uid"):
+            response_data["uid"] = topup_result["user"]["uid"]
         
-        # Add usedUc cards if available
+        # Add usedUc cards if available (extracted from topup_result or use pre-extracted used_uc_cards)
         if used_uc_cards:
             response_data["usedUc"] = used_uc_cards
+        elif topup_result and topup_result.get("payment") and topup_result["payment"].get("usedUc"):
+            used_uc_obj = topup_result["payment"]["usedUc"]
+            if isinstance(used_uc_obj, dict) and used_uc_obj.get("codes"):
+                response_data["usedUc"] = [card.get("code") for card in used_uc_obj["codes"] if card.get("code")]
+            elif isinstance(used_uc_obj, list):
+                response_data["usedUc"] = [card.get("code") if isinstance(card, dict) else str(card) for card in used_uc_obj]
+            else:
+                response_data["usedUc"] = used_uc_obj
         
         return jsonify(response_data)
         
