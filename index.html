@@ -1,539 +1,782 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Telegram Bot Command Interface</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
-        }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+      }
 
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
 
-        .header p {
-            opacity: 0.9;
-            font-size: 1.1em;
-        }
+      .header p {
+        opacity: 0.9;
+        font-size: 1.1em;
+      }
 
+      .content {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 20px;
+        padding: 30px;
+      }
+
+      @media (max-width: 768px) {
         .content {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 20px;
-            padding: 30px;
+          grid-template-columns: 1fr;
         }
+      }
 
-        @media (max-width: 768px) {
-            .content {
-                grid-template-columns: 1fr;
-            }
-        }
+      .input-section {
+        background: #f8f9fa;
+        padding: 25px;
+        border-radius: 10px;
+      }
 
-        .input-section {
-            background: #f8f9fa;
-            padding: 25px;
-            border-radius: 10px;
-        }
+      .input-section h2 {
+        color: #667eea;
+        margin-bottom: 20px;
+        font-size: 1.5em;
+      }
 
-        .input-section h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-        }
+      .form-group {
+        margin-bottom: 20px;
+      }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 600;
+      }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 600;
-        }
+      .form-group input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 1em;
+        transition: border-color 0.3s;
+      }
 
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 1em;
-            transition: border-color 0.3s;
-        }
+      .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
 
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
+      .btn {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        margin-top: 10px;
+      }
 
-        .btn {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin-top: 10px;
-        }
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
 
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
+      .btn:active {
+        transform: translateY(0);
+      }
 
-        .btn:active {
-            transform: translateY(0);
-        }
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
 
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
+      .divider {
+        height: 2px;
+        background: #e0e0e0;
+        margin: 25px 0;
+      }
 
-        .divider {
-            height: 2px;
-            background: #e0e0e0;
-            margin: 25px 0;
-        }
+      .response-section {
+        background: #f8f9fa;
+        padding: 25px;
+        border-radius: 10px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+      }
 
-        .response-section {
-            background: #f8f9fa;
-            padding: 25px;
-            border-radius: 10px;
-            max-height: 80vh;
-            display: flex;
-            flex-direction: column;
-        }
+      .response-section h2 {
+        color: #667eea;
+        margin-bottom: 20px;
+        font-size: 1.5em;
+      }
 
-        .response-section h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-        }
+      .response-container {
+        flex: 1;
+        overflow-y: auto;
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        border: 2px solid #e0e0e0;
+      }
 
-        .response-container {
-            flex: 1;
-            overflow-y: auto;
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            border: 2px solid #e0e0e0;
-        }
+      .response-item {
+        background: #f8f9fa;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+        animation: slideIn 0.3s ease-out;
+      }
 
-        .response-item {
-            background: #f8f9fa;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-            animation: slideIn 0.3s ease-out;
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(-20px);
         }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
+      .response-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e0e0e0;
+      }
 
-        .response-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #e0e0e0;
-        }
+      .response-time {
+        color: #666;
+        font-size: 0.9em;
+      }
 
-        .response-time {
-            color: #666;
-            font-size: 0.9em;
-        }
+      .response-status {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85em;
+        font-weight: 600;
+      }
 
-        .response-status {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: 600;
-        }
+      .status-success {
+        background: #d4edda;
+        color: #155724;
+      }
 
-        .status-success {
-            background: #d4edda;
-            color: #155724;
-        }
+      .status-error {
+        background: #f8d7da;
+        color: #721c24;
+      }
 
-        .status-error {
-            background: #f8d7da;
-            color: #721c24;
-        }
+      .response-content {
+        color: #333;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-family: "Courier New", monospace;
+        font-size: 0.95em;
+        line-height: 1.6;
+      }
 
-        .response-content {
-            color: #333;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: 'Courier New', monospace;
-            font-size: 0.95em;
-            line-height: 1.6;
-        }
+      .loading {
+        text-align: center;
+        padding: 20px;
+        color: #667eea;
+      }
 
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #667eea;
-        }
+      .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+      }
 
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
+      .empty-state svg {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 20px;
+        opacity: 0.3;
+      }
 
-        .empty-state svg {
-            width: 100px;
-            height: 100px;
-            margin-bottom: 20px;
-            opacity: 0.3;
-        }
+      .topup-result {
+        background: #e7f3ff;
+        border-left-color: #2196f3;
+        padding: 20px;
+      }
 
-        .topup-result {
-            background: #e7f3ff;
-            border-left-color: #2196F3;
-            padding: 20px;
-        }
+      .topup-result .result-header {
+        font-weight: 600;
+        color: #1976d2;
+        margin-bottom: 15px;
+        font-size: 1.1em;
+      }
 
-        .topup-result .result-header {
-            font-weight: 600;
-            color: #1976D2;
-            margin-bottom: 15px;
-            font-size: 1.1em;
-        }
+      .topup-result .result-field {
+        margin: 8px 0;
+        padding: 8px;
+        background: white;
+        border-radius: 5px;
+      }
 
-        .topup-result .result-field {
-            margin: 8px 0;
-            padding: 8px;
-            background: white;
-            border-radius: 5px;
-        }
+      .result-field-label {
+        font-weight: 600;
+        color: #555;
+      }
 
-        .result-field-label {
-            font-weight: 600;
-            color: #555;
-        }
-
-        .result-field-value {
-            color: #333;
-            margin-left: 10px;
-        }
+      .result-field-value {
+        color: #333;
+        margin-left: 10px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <div class="header">
-            <h1>🤖 Telegram Bot Interface</h1>
-            <p>Send commands and view responses in real-time</p>
+      <div class="header">
+        <h1>🤖 Telegram Bot Interface</h1>
+        <p>Send commands and view responses in real-time</p>
+      </div>
+
+      <div class="content">
+        <div class="input-section">
+          <h2>📤 Send Command</h2>
+          <div class="form-group">
+            <label for="command">Command:</label>
+            <input type="text" id="command" placeholder="e.g., Krate" />
+          </div>
+          <button class="btn" onclick="sendCommand()">Send Command</button>
+
+          <div class="divider"></div>
+
+          <h2 style="margin-top: 20px">📨 Send Raw Message</h2>
+          <div class="form-group">
+            <label for="prefix">Prefix:</label>
+            <input type="text" id="prefix" placeholder="e.g., ktp" />
+          </div>
+          <div class="form-group">
+            <label for="uid">UID:</label>
+            <input type="text" id="uid" placeholder="e.g., 123456789" />
+          </div>
+          <div class="form-group">
+            <label for="diamonds">Diamonds:</label>
+            <input type="text" id="diamonds" placeholder="e.g., 100" />
+          </div>
+          <button class="btn" onclick="sendRawMessage()">
+            Send Raw Message
+          </button>
+
+          <div class="divider"></div>
+
+          <button
+            class="btn"
+            onclick="clearResponses()"
+            style="background: #dc3545"
+          >
+            Clear Responses
+          </button>
         </div>
 
-        <div class="content">
-            <div class="input-section">
-                <h2>📤 Send Command</h2>
-                <div class="form-group">
-                    <label for="command">Command:</label>
-                    <input type="text" id="command" placeholder="e.g., Krate" />
-                </div>
-                <button class="btn" onclick="sendCommand()">Send Command</button>
-
-                <div class="divider"></div>
-
-                <h2 style="margin-top: 20px;">📨 Send Raw Message</h2>
-                <div class="form-group">
-                    <label for="prefix">Prefix:</label>
-                    <input type="text" id="prefix" placeholder="e.g., ktp" />
-                </div>
-                <div class="form-group">
-                    <label for="uid">UID:</label>
-                    <input type="text" id="uid" placeholder="e.g., 123456789" />
-                </div>
-                <div class="form-group">
-                    <label for="diamonds">Diamonds:</label>
-                    <input type="text" id="diamonds" placeholder="e.g., 100" />
-                </div>
-                <button class="btn" onclick="sendRawMessage()">Send Raw Message</button>
-
-                <div class="divider"></div>
-
-                <button class="btn" onclick="clearResponses()" style="background: #dc3545;">Clear Responses</button>
+        <div class="response-section">
+          <h2>📥 Responses</h2>
+          <div class="response-container" id="responseContainer">
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"
+                />
+              </svg>
+              <p>No responses yet. Send a command to see responses here.</p>
             </div>
-
-            <div class="response-section">
-                <h2>📥 Responses</h2>
-                <div class="response-container" id="responseContainer">
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
-                        </svg>
-                        <p>No responses yet. Send a command to see responses here.</p>
-                    </div>
-                </div>
-            </div>
+          </div>
         </div>
+      </div>
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:5000';
-        let responseCount = 0;
+      // Use relative URLs - works on same domain (both localhost and Fly.io)
+      const API_BASE = "https://tg-bot-lisener.fly.dev";
+      let responseCount = 0;
 
-        function formatResponse(response) {
-            // #region agent log
-            fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:322',message:'formatResponse called',data:{response:response,hasResponse:!!response,responseType:typeof response},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
-            if (!response) return 'No response received';
-            
-            // #region agent log
-            fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:326',message:'Checking response structure',data:{hasRawData:!!response.raw_data,hasTopupResult:!!(response.raw_data && response.raw_data.topupResult),responseKeys:Object.keys(response || {})},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
-            // Check if it's a topup result
-            if (response.raw_data && response.raw_data.topupResult) {
-                const topup = response.raw_data.topupResult;
-                let html = '<div class="topup-result">';
-                html += `<div class="result-header">✅ TOPUP ${topup.status === 'success' ? 'DONE' : 'FAILED'}</div>`;
-                
-                if (topup.orderId) {
-                    html += `<div class="result-field"><span class="result-field-label">Order ID:</span> <span class="result-field-value">#${topup.orderId}</span></div>`;
-                }
-                
-                if (topup.user && topup.user.name) {
-                    html += `<div class="result-field"><span class="result-field-label">User:</span> <span class="result-field-value">${topup.user.name}${topup.user.uid ? ' (UID: ' + topup.user.uid + ')' : ''}</span></div>`;
-                }
-                
-                if (topup.payment) {
-                    if (topup.payment.total) {
-                        html += `<div class="result-field"><span class="result-field-label">Total:</span> <span class="result-field-value">${topup.payment.total}৳</span></div>`;
-                    }
-                    if (topup.payment.usedUc && topup.payment.usedUc.codes) {
-                        html += `<div class="result-field"><span class="result-field-label">UC Cards:</span> <span class="result-field-value">${topup.payment.usedUc.codes.length}</span></div>`;
-                    }
-                }
-                
-                if (topup.meta && topup.meta.durationSec) {
-                    html += `<div class="result-field"><span class="result-field-label">Duration:</span> <span class="result-field-value">${topup.meta.durationSec}s</span></div>`;
-                }
-                
-                html += '</div>';
-                return html;
+      function formatResponse(response) {
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "index.html:322",
+              message: "formatResponse called",
+              data: {
+                response: response,
+                hasResponse: !!response,
+                responseType: typeof response,
+              },
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              runId: "run1",
+              hypothesisId: "B",
+            }),
+          }
+        ).catch(() => {});
+        // #endregion
+        if (!response) return "No response received";
+
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "index.html:326",
+              message: "Checking response structure",
+              data: {
+                hasRawData: !!response.raw_data,
+                hasTopupResult: !!(
+                  response.raw_data && response.raw_data.topupResult
+                ),
+                responseKeys: Object.keys(response || {}),
+              },
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              runId: "run1",
+              hypothesisId: "C",
+            }),
+          }
+        ).catch(() => {});
+        // #endregion
+        // Check if it's a topup result
+        if (response.raw_data && response.raw_data.topupResult) {
+          const topup = response.raw_data.topupResult;
+          let html = '<div class="topup-result">';
+          html += `<div class="result-header">✅ TOPUP ${
+            topup.status === "success" ? "DONE" : "FAILED"
+          }</div>`;
+
+          if (topup.orderId) {
+            html += `<div class="result-field"><span class="result-field-label">Order ID:</span> <span class="result-field-value">#${topup.orderId}</span></div>`;
+          }
+
+          if (topup.user && topup.user.name) {
+            html += `<div class="result-field"><span class="result-field-label">User:</span> <span class="result-field-value">${
+              topup.user.name
+            }${
+              topup.user.uid ? " (UID: " + topup.user.uid + ")" : ""
+            }</span></div>`;
+          }
+
+          if (topup.payment) {
+            if (topup.payment.total) {
+              html += `<div class="result-field"><span class="result-field-label">Total:</span> <span class="result-field-value">${topup.payment.total}৳</span></div>`;
             }
-            
-            // Regular text response
-            // #region agent log
-            fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:360',message:'Returning regular text response',data:{hasText:!!response.text,textValue:response.text},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
-            return response.text || 'No text content';
+            if (topup.payment.usedUc && topup.payment.usedUc.codes) {
+              html += `<div class="result-field"><span class="result-field-label">UC Cards:</span> <span class="result-field-value">${topup.payment.usedUc.codes.length}</span></div>`;
+            }
+          }
+
+          if (topup.meta && topup.meta.durationSec) {
+            html += `<div class="result-field"><span class="result-field-label">Duration:</span> <span class="result-field-value">${topup.meta.durationSec}s</span></div>`;
+          }
+
+          html += "</div>";
+          return html;
         }
 
-        function addResponse(success, data, error = null) {
-            // #region agent log
-            fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:365',message:'addResponse called',data:{success:success,hasData:!!data,hasError:!!error,dataKeys:data?Object.keys(data):[],errorMessage:error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
-            const container = document.getElementById('responseContainer');
-            
-            // Remove empty state if exists
-            const emptyState = container.querySelector('.empty-state');
-            if (emptyState) {
-                emptyState.remove();
-            }
+        // Regular text response
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "index.html:360",
+              message: "Returning regular text response",
+              data: { hasText: !!response.text, textValue: response.text },
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              runId: "run1",
+              hypothesisId: "C",
+            }),
+          }
+        ).catch(() => {});
+        // #endregion
+        return response.text || "No text content";
+      }
 
-            const responseItem = document.createElement('div');
-            responseItem.className = 'response-item';
-            
-            const now = new Date();
-            const timeString = now.toLocaleTimeString();
-            
-            let content = '';
-            if (success && data) {
-                // #region agent log
-                fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:380',message:'Formatting response',data:{hasResponse:!!data.response,responseType:typeof data.response,dataKeys:Object.keys(data || {})},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                // #endregion
-                if (data.response) {
-                    // Bot response received
-                    content = formatResponse(data.response);
-                } else if (data.message) {
-                    // Message sent but no response yet
-                    content = `Message sent: ${data.message}\n\nWaiting for bot response...\n\n(Response will be saved to database when bot replies)`;
-                } else {
-                    // Show full data structure
-                    content = `Response received:\n\n${JSON.stringify(data, null, 2)}`;
-                }
-            } else if (error) {
-                content = `Error: ${error}`;
-            } else {
-                content = data ? JSON.stringify(data, null, 2) : 'No response';
+      function addResponse(success, data, error = null) {
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "index.html:365",
+              message: "addResponse called",
+              data: {
+                success: success,
+                hasData: !!data,
+                hasError: !!error,
+                dataKeys: data ? Object.keys(data) : [],
+                errorMessage: error,
+              },
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              runId: "run1",
+              hypothesisId: "D",
+            }),
+          }
+        ).catch(() => {});
+        // #endregion
+        const container = document.getElementById("responseContainer");
+
+        // Remove empty state if exists
+        const emptyState = container.querySelector(".empty-state");
+        if (emptyState) {
+          emptyState.remove();
+        }
+
+        const responseItem = document.createElement("div");
+        responseItem.className = "response-item";
+
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
+
+        let content = "";
+        if (success && data) {
+          // #region agent log
+          fetch(
+            "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                location: "index.html:380",
+                message: "Formatting response",
+                data: {
+                  hasResponse: !!data.response,
+                  responseType: typeof data.response,
+                  dataKeys: Object.keys(data || {}),
+                },
+                timestamp: Date.now(),
+                sessionId: "debug-session",
+                runId: "run1",
+                hypothesisId: "D",
+              }),
             }
-            
-            // #region agent log
-            fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:385',message:'Content generated',data:{contentLength:content.length,contentPreview:content.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
-            
-            responseItem.innerHTML = `
+          ).catch(() => {});
+          // #endregion
+          if (data.response) {
+            // Bot response received
+            content = formatResponse(data.response);
+          } else if (data.message) {
+            // Message sent but no response yet
+            content = `Message sent: ${data.message}\n\nWaiting for bot response...\n\n(Response will be saved to database when bot replies)`;
+          } else {
+            // Show full data structure
+            content = `Response received:\n\n${JSON.stringify(data, null, 2)}`;
+          }
+        } else if (error) {
+          content = `Error: ${error}`;
+        } else {
+          content = data ? JSON.stringify(data, null, 2) : "No response";
+        }
+
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "index.html:385",
+              message: "Content generated",
+              data: {
+                contentLength: content.length,
+                contentPreview: content.substring(0, 100),
+              },
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              runId: "run1",
+              hypothesisId: "D",
+            }),
+          }
+        ).catch(() => {});
+        // #endregion
+
+        responseItem.innerHTML = `
                 <div class="response-header">
                     <span class="response-time">${timeString}</span>
-                    <span class="response-status ${success ? 'status-success' : 'status-error'}">
-                        ${success ? '✓ Success' : '✗ Error'}
+                    <span class="response-status ${
+                      success ? "status-success" : "status-error"
+                    }">
+                        ${success ? "✓ Success" : "✗ Error"}
                     </span>
                 </div>
                 <div class="response-content">${content}</div>
             `;
-            
-            container.insertBefore(responseItem, container.firstChild);
-            
-            // Auto-scroll to top
-            container.scrollTop = 0;
-            
-            responseCount++;
+
+        container.insertBefore(responseItem, container.firstChild);
+
+        // Auto-scroll to top
+        container.scrollTop = 0;
+
+        responseCount++;
+      }
+
+      async function sendCommand(clickedButton = null) {
+        const command = document.getElementById("command").value.trim();
+        if (!command) {
+          alert("Please enter a command");
+          return;
         }
 
-        async function sendCommand(clickedButton = null) {
-            const command = document.getElementById('command').value.trim();
-            if (!command) {
-                alert('Please enter a command');
-                return;
-            }
-
-            // Find the button if not provided (for Enter key press)
-            const btn = clickedButton || document.querySelector('button[onclick="sendCommand()"]');
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = 'Sending...';
-            }
-
-            let sendError = null;
-            try {
-                const response = await fetch(`${API_BASE}/api/send`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ command: command })
-                });
-
-                const data = await response.json();
-                addResponse(response.ok, data, response.ok ? null : data.error);
-                // Only clear field after successful send
-                if (response.ok) {
-                    document.getElementById('command').value = '';
-                }
-            } catch (error) {
-                sendError = error;
-                addResponse(false, null, error.message);
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = 'Send Command';
-                }
-            }
+        // Find the button if not provided (for Enter key press)
+        const btn =
+          clickedButton ||
+          document.querySelector('button[onclick="sendCommand()"]');
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Sending...";
         }
 
-        async function sendRawMessage(clickedButton = null) {
-            // #region agent log
-            fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:433',message:'sendRawMessage called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
-            const prefix = document.getElementById('prefix').value.trim();
-            const uid = document.getElementById('uid').value.trim();
-            const diamonds = document.getElementById('diamonds').value.trim();
+        let sendError = null;
+        try {
+          const response = await fetch(`${API_BASE}/api/send`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ command: command }),
+          });
 
-            // #region agent log
-            fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:437',message:'Input values extracted',data:{prefix:prefix,uid:uid,diamonds:diamonds,allFilled:!!(prefix && uid && diamonds)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
+          const data = await response.json();
+          addResponse(response.ok, data, response.ok ? null : data.error);
+          // Only clear field after successful send
+          if (response.ok) {
+            document.getElementById("command").value = "";
+          }
+        } catch (error) {
+          sendError = error;
+          addResponse(false, null, error.message);
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Send Command";
+          }
+        }
+      }
 
-            if (!prefix || !uid || !diamonds) {
-                alert('Please fill in all fields');
-                return;
-            }
+      async function sendRawMessage(clickedButton = null) {
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "index.html:433",
+              message: "sendRawMessage called",
+              data: {},
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              runId: "run1",
+              hypothesisId: "A",
+            }),
+          }
+        ).catch(() => {});
+        // #endregion
+        const prefix = document.getElementById("prefix").value.trim();
+        const uid = document.getElementById("uid").value.trim();
+        const diamonds = document.getElementById("diamonds").value.trim();
 
-            // Find the button if not provided (for Enter key press)
-            const btn = clickedButton || document.querySelector('button[onclick="sendRawMessage()"]');
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = 'Sending...';
-            }
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "index.html:437",
+              message: "Input values extracted",
+              data: {
+                prefix: prefix,
+                uid: uid,
+                diamonds: diamonds,
+                allFilled: !!(prefix && uid && diamonds),
+              },
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              runId: "run1",
+              hypothesisId: "A",
+            }),
+          }
+        ).catch(() => {});
+        // #endregion
 
-            try {
-                // #region agent log
-                fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:448',message:'Sending API request',data:{url:`${API_BASE}/api/send-message-raw`,body:{prefix,uid,diamonds}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
-                const response = await fetch(`${API_BASE}/api/send-message-raw`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ prefix, uid, diamonds })
-                });
-
-                // #region agent log
-                fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:456',message:'API response received',data:{ok:response.ok,status:response.status,statusText:response.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
-                const data = await response.json();
-                // #region agent log
-                fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:457',message:'Response data parsed',data:{hasData:!!data,dataKeys:data?Object.keys(data):[],hasResponse:!!(data && data.response),success:data?.success},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
-                addResponse(response.ok, data, response.ok ? null : data.error);
-                // Only clear fields after successful send
-                if (response.ok) {
-                    document.getElementById('prefix').value = '';
-                    document.getElementById('uid').value = '';
-                    document.getElementById('diamonds').value = '';
-                }
-            } catch (error) {
-                // #region agent log
-                fetch('http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:459',message:'Error caught',data:{errorMessage:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-                // #endregion
-                addResponse(false, null, error.message);
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = 'Send Raw Message';
-                }
-            }
+        if (!prefix || !uid || !diamonds) {
+          alert("Please fill in all fields");
+          return;
         }
 
-        function clearResponses() {
-            const container = document.getElementById('responseContainer');
-            container.innerHTML = `
+        // Find the button if not provided (for Enter key press)
+        const btn =
+          clickedButton ||
+          document.querySelector('button[onclick="sendRawMessage()"]');
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Sending...";
+        }
+
+        try {
+          // #region agent log
+          fetch(
+            "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                location: "index.html:448",
+                message: "Sending API request",
+                data: {
+                  url: `${API_BASE}/api/send-message-raw`,
+                  body: { prefix, uid, diamonds },
+                },
+                timestamp: Date.now(),
+                sessionId: "debug-session",
+                runId: "run1",
+                hypothesisId: "A",
+              }),
+            }
+          ).catch(() => {});
+          // #endregion
+          const response = await fetch(`${API_BASE}/api/send-message-raw`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ prefix, uid, diamonds }),
+          });
+
+          // #region agent log
+          fetch(
+            "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                location: "index.html:456",
+                message: "API response received",
+                data: {
+                  ok: response.ok,
+                  status: response.status,
+                  statusText: response.statusText,
+                },
+                timestamp: Date.now(),
+                sessionId: "debug-session",
+                runId: "run1",
+                hypothesisId: "A",
+              }),
+            }
+          ).catch(() => {});
+          // #endregion
+          const data = await response.json();
+          // #region agent log
+          fetch(
+            "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                location: "index.html:457",
+                message: "Response data parsed",
+                data: {
+                  hasData: !!data,
+                  dataKeys: data ? Object.keys(data) : [],
+                  hasResponse: !!(data && data.response),
+                  success: data?.success,
+                },
+                timestamp: Date.now(),
+                sessionId: "debug-session",
+                runId: "run1",
+                hypothesisId: "A",
+              }),
+            }
+          ).catch(() => {});
+          // #endregion
+          addResponse(response.ok, data, response.ok ? null : data.error);
+          // Only clear fields after successful send
+          if (response.ok) {
+            document.getElementById("prefix").value = "";
+            document.getElementById("uid").value = "";
+            document.getElementById("diamonds").value = "";
+          }
+        } catch (error) {
+          // #region agent log
+          fetch(
+            "http://127.0.0.1:7245/ingest/b0557be7-2e20-4e98-9445-71f0b464c364",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                location: "index.html:459",
+                message: "Error caught",
+                data: { errorMessage: error.message, errorStack: error.stack },
+                timestamp: Date.now(),
+                sessionId: "debug-session",
+                runId: "run1",
+                hypothesisId: "E",
+              }),
+            }
+          ).catch(() => {});
+          // #endregion
+          addResponse(false, null, error.message);
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Send Raw Message";
+          }
+        }
+      }
+
+      function clearResponses() {
+        const container = document.getElementById("responseContainer");
+        container.innerHTML = `
                 <div class="empty-state">
                     <svg viewBox="0 0 24 24" fill="currentColor">
                         <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
@@ -541,24 +784,27 @@
                     <p>No responses yet. Send a command to see responses here.</p>
                 </div>
             `;
-            responseCount = 0;
-        }
+        responseCount = 0;
+      }
 
-        // Allow Enter key to submit
-        document.getElementById('command').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault(); // Prevent form submission
-                sendCommand();
-            }
+      // Allow Enter key to submit
+      document
+        .getElementById("command")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault(); // Prevent form submission
+            sendCommand();
+          }
         });
 
-        document.getElementById('diamonds').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault(); // Prevent form submission
-                sendRawMessage();
-            }
+      document
+        .getElementById("diamonds")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault(); // Prevent form submission
+            sendRawMessage();
+          }
         });
     </script>
-</body>
+  </body>
 </html>
-

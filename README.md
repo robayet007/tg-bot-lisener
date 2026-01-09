@@ -6,7 +6,7 @@ A Python script that listens to messages from a specific Telegram bot in real-ti
 
 - Real-time listening to bot messages
 - Console output with formatted timestamps and message content
-- Automatic saving to MongoDB (localhost)
+- Automatic saving to MongoDB (MongoDB Atlas or remote MongoDB)
 - Automatic parsing of account status information (Name, Due, Balance, Due Limit)
 - Automatic session management (saves login state)
 - Support for text, media, stickers, and other message types
@@ -17,7 +17,7 @@ A Python script that listens to messages from a specific Telegram bot in real-ti
 - Python 3.7 or higher
 - Telegram API credentials (api_id and api_hash)
 - A Telegram account
-- MongoDB installed and running on localhost (optional - script works without it)
+- MongoDB connection string (MONGODB_URI) - required for data persistence
 
 ## Installation
 
@@ -28,36 +28,45 @@ A Python script that listens to messages from a specific Telegram bot in real-ti
 pip install -r requirements.txt
 ```
 
-## MongoDB Setup (Optional)
+## MongoDB Setup
 
-1. Install MongoDB on your system:
-   - Windows: Download from [MongoDB Download Center](https://www.mongodb.com/try/download/community)
-   - Or use: `choco install mongodb` (if you have Chocolatey)
+1. Set up a MongoDB database (recommended: MongoDB Atlas - free tier available)
+   - Sign up at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+   - Create a cluster and get your connection string
+   - Format: `mongodb+srv://username:password@cluster.mongodb.net/?appName=Cluster`
 
-2. Start MongoDB service:
+2. Set the MongoDB URI as an environment variable:
    ```bash
-   # Windows (if installed as service, it starts automatically)
-   # Or manually:
-   mongod --dbpath "C:\data\db"
+   # Windows PowerShell
+   $env:MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/?appName=Cluster"
+   
+   # Linux/Mac
+   export MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/?appName=Cluster"
    ```
 
-3. MongoDB will run on `localhost:27017` by default
-
-**Note:** The script will work without MongoDB - messages will still be printed to console. MongoDB is optional for data persistence.
+**Note:** MONGODB_URI is required. The script will not work without a valid MongoDB connection string.
 
 ## Configuration
 
-Edit `config.py` to set your bot username and MongoDB settings:
+1. Set MongoDB URI as environment variable (required):
+   ```bash
+   # Windows PowerShell
+   $env:MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/?appName=Cluster"
+   
+   # Linux/Mac
+   export MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/?appName=Cluster"
+   ```
 
-```python
-BOT_USERNAME = "kaiumrakibucbot"  # Change to your target bot username
+2. Edit `config.py` to set your bot username (optional - can also use environment variable):
+   ```python
+   BOT_USERNAME = "kaiumrakibucbot"  # Change to your target bot username
+   ```
 
-# MongoDB Configuration (default: localhost)
-MONGODB_HOST = "localhost"
-MONGODB_PORT = 27017
-MONGODB_DATABASE = "telegram_bot"
-MONGODB_COLLECTION = "bot_messages"
-```
+3. Optional: Set database and collection names via environment variables:
+   ```bash
+   $env:MONGODB_DATABASE="telegram_bot"
+   $env:MONGODB_COLLECTION="bot_messages"
+   ```
 
 The API credentials are already configured:
 - API_ID: 37118739
@@ -142,9 +151,10 @@ python telegram_listener.py
 - **Authentication errors**: Make sure your API credentials are correct
 - **No messages appearing**: Ensure you're sending commands to the bot from your Telegram app
 - **MongoDB connection failed**: 
-  - Make sure MongoDB is installed and running
-  - Check that MongoDB is running on `localhost:27017`
-  - The script will continue working without MongoDB (console output only)
+  - Make sure MONGODB_URI environment variable is set correctly
+  - Verify your MongoDB connection string is valid and accessible
+  - Check network connectivity to your MongoDB server
+  - The script requires a valid MongoDB connection to function
 - **Duplicate messages in MongoDB**: The script automatically prevents duplicates based on message_id
 
 ## License

@@ -6,6 +6,7 @@ Also saves filtered messages to MongoDB.
 
 import asyncio
 import re
+import os
 from datetime import datetime
 from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError
@@ -16,6 +17,12 @@ import config
 
 class TelegramBotListener:
     def __init__(self):
+        # Ensure session directory exists
+        session_dir = os.path.dirname(config.SESSION_NAME)
+        if session_dir and not os.path.exists(session_dir):
+            os.makedirs(session_dir, exist_ok=True)
+            print(f"Created session directory: {session_dir}")
+        
         self.client = TelegramClient(
             config.SESSION_NAME,
             config.API_ID,
@@ -29,14 +36,73 @@ class TelegramBotListener:
         # Store recent responses for API access
         self.recent_responses = {}
         self.response_lock = asyncio.Lock()
+        # Track pending requests waiting for UID-matched responses
+        # Use a list per UID to handle multiple concurrent requests with same UID
+        self.pending_requests = {}  # {uid: [{sent_message_id, timestamp, event, response_data}, ...]}
+        self.pending_requests_lock = asyncio.Lock()
+
+    def validate_session_file(self):
+        """Validate session file before attempting connection.
+        
+        Returns:
+            tuple: (is_valid, diagnostics_dict)
+        """
+        session_path = config.get_session_file_path()
+        diagnostics = {
+            "path": session_path,
+            "exists": False,
+            "size": 0,
+            "readable": False,
+            "modified": None
+        }
+        
+        if not os.path.exists(session_path):
+            diagnostics["error"] = "Session file does not exist"
+            return False, diagnostics
+        
+        diagnostics["exists"] = True
+        
+        try:
+            stat = os.stat(session_path)
+            diagnostics["size"] = stat.st_size
+            diagnostics["modified"] = datetime.fromtimestamp(stat.st_mtime).isoformat()
+            
+            # Check if file is readable
+            if os.access(session_path, os.R_OK):
+                diagnostics["readable"] = True
+            else:
+                diagnostics["error"] = "Session file is not readable"
+                return False, diagnostics
+            
+            # Basic validation: session file should have some size
+            if diagnostics["size"] == 0:
+                diagnostics["error"] = "Session file is empty"
+                return False, diagnostics
+            
+            # Session files are typically at least a few KB
+            if diagnostics["size"] < 100:
+                diagnostics["warning"] = "Session file is unusually small, may be corrupted"
+            
+            return True, diagnostics
+            
+        except Exception as e:
+            diagnostics["error"] = f"Error validating session file: {e}"
+            return False, diagnostics
 
     def connect_mongodb(self):
         """Connect to MongoDB."""
         try:
-            print(f"Connecting to MongoDB at {config.MONGODB_HOST}:{config.MONGODB_PORT}...")
+            # MONGODB_URI is optional - if not set, skip MongoDB connection
+            if not config.MONGODB_URI:
+                print(f"⚠ Warning: MONGODB_URI not set. Skipping MongoDB connection.")
+                print(f"⚠ Messages will only be printed to console, not saved to database.")
+                self.mongo_client = None
+                self.mongo_collection = None
+                return False
+            
+            print(f"Connecting to MongoDB using URI...")
             self.mongo_client = MongoClient(
-                host=config.MONGODB_HOST,
-                port=config.MONGODB_PORT,
+                config.MONGODB_URI,
                 serverSelectionTimeoutMS=5000
             )
             # Test connection
@@ -49,7 +115,7 @@ class TelegramBotListener:
             return True
         except ConnectionFailure as e:
             print(f"✗ ERROR: Could not connect to MongoDB: {e}")
-            print("  Make sure MongoDB is running on localhost:27017")
+            print("  Make sure MongoDB URI is correct and accessible")
             print("  Messages will still be printed to console, but not saved to database.")
             self.mongo_client = None
             self.mongo_collection = None
@@ -65,14 +131,63 @@ class TelegramBotListener:
         """Initialize the Telegram client and authenticate."""
         print("Connecting to Telegram...")
         
-        # Connect to MongoDB first
-        self.connect_mongodb()
+        # Connect to MongoDB first (non-blocking - continue even if it fails)
+        try:
+            self.connect_mongodb()
+        except Exception as e:
+            print(f"⚠ Warning: MongoDB connection failed: {e}")
+            print("⚠ Continuing without MongoDB - messages will only be printed to console")
+            self.mongo_client = None
+            self.mongo_collection = None
         
         # Connect first
         await self.client.connect()
         
+        # Try to get user info to check if session is valid
+        # This provides better diagnostics than just is_user_authorized()
+        try:
+            me = await self.client.get_me()
+            if me:
+                print(f"✓ Session is valid! Connected as: {me.first_name} (@{me.username if me.username else 'no username'})")
+                # If we can get_me(), we're authorized, so skip the is_user_authorized() check
+        except Exception as session_check_error:
+            # If get_me() fails, we're likely not authorized
+            print(f"⚠ Could not get user info: {session_check_error}")
+            # Continue to check is_user_authorized() below
+        
         # Check if we need to authenticate
         if not await self.client.is_user_authorized():
+            # Check if we're in a non-interactive environment
+            import sys
+            if not sys.stdin.isatty():
+                # Non-interactive environment (like Fly.io)
+                # Get session file info for diagnostics
+                session_path = config.get_session_file_path()
+                session_size = 0
+                session_modified = None
+                if os.path.exists(session_path):
+                    try:
+                        stat = os.stat(session_path)
+                        session_size = stat.st_size
+                        session_modified = datetime.fromtimestamp(stat.st_mtime).isoformat()
+                    except Exception:
+                        pass
+                
+                error_msg = (
+                    f"Session file exists ({session_size} bytes) but is not authorized.\n"
+                    f"Session file path: {session_path}\n"
+                    f"Session file modified: {session_modified if session_modified else 'unknown'}\n"
+                    f"\nThis usually means:\n"
+                    f"  1. Session file is expired or invalid\n"
+                    f"  2. Session file is from a different account\n"
+                    f"  3. Session file needs to be re-authenticated\n"
+                    f"  4. Session file format is incompatible\n"
+                    f"\nSolution: Authenticate locally and upload a fresh session file."
+                )
+                print(f"\n⚠ {error_msg}")
+                await self.client.disconnect()
+                raise Exception(error_msg)
+            
             print("\n=== First Time Setup ===")
             print("Please enter your phone number (with country code, e.g., +8801234567890):")
             phone = input("Phone: ")
@@ -419,7 +534,11 @@ class TelegramBotListener:
             # For Limit Over, return minimal structure with failed status
             topup_result = {
                 "status": "failed",
-                "orderId": None
+                "orderId": None,
+                "user": {
+                    "name": None,
+                    "uid": None
+                }
             }
             
             # Try to extract Order ID if present
@@ -431,7 +550,23 @@ class TelegramBotListener:
                 except ValueError:
                     pass
             
-            # Return minimal structure for Limit Over
+            # Extract User name: User   : ツOɴʟʏ⸙ᴢ!xᴜ모
+            user_match = re.search(r'User\s*:\s*(.+)', text, re.IGNORECASE)
+            if user_match:
+                user_name = user_match.group(1).strip()
+                # Remove any trailing box drawing characters or separators
+                user_name = re.sub(r'[└┘┌┐│─━┃┏┓┗┛├┤┬┴┼╭╮╯╰╱╲╳]+', '', user_name).strip()
+                if user_name:
+                    topup_result["user"]["name"] = user_name
+                    print(f"  [Debug] Extracted user name: {topup_result['user']['name']}")
+            
+            # Extract UID: UID    : 2194747891
+            uid_match = re.search(r'UID\s*:\s*(\d+)', text, re.IGNORECASE)
+            if uid_match:
+                topup_result["user"]["uid"] = uid_match.group(1)
+                print(f"  [Debug] Extracted UID: {topup_result['user']['uid']}")
+            
+            # Return structure for Limit Over with UID
             return topup_result
         
         print(f"  [Debug] Parsing TOPUP DONE message...")
@@ -931,6 +1066,107 @@ class TelegramBotListener:
         
         return "\n".join(output)
 
+    async def register_pending_request(self, uid, sent_message_id):
+        """Register a pending request waiting for a response with matching UID.
+        
+        Args:
+            uid: The UID from the request
+            sent_message_id: The message ID of the sent message (can be None initially)
+            
+        Returns:
+            asyncio.Event that will be set when matching response arrives
+        """
+        async with self.pending_requests_lock:
+            event = asyncio.Event()
+            pending_item = {
+                "sent_message_id": sent_message_id,
+                "timestamp": datetime.now(),
+                "event": event,
+                "response_data": None
+            }
+            # Use a list to handle multiple requests with same UID
+            if uid not in self.pending_requests:
+                self.pending_requests[uid] = []
+            self.pending_requests[uid].append(pending_item)
+            print(f"  [Pending] Registered pending request for UID: {uid} (sent_message_id: {sent_message_id}, queue position: {len(self.pending_requests[uid])})")
+            return event, pending_item
+    
+    async def unregister_pending_request(self, uid, pending_item=None):
+        """Unregister a pending request.
+        
+        Args:
+            uid: The UID to unregister
+            pending_item: Optional specific pending item to remove (if None, removes first in queue)
+        """
+        async with self.pending_requests_lock:
+            if uid in self.pending_requests and self.pending_requests[uid]:
+                if pending_item:
+                    try:
+                        self.pending_requests[uid].remove(pending_item)
+                    except ValueError:
+                        pass
+                else:
+                    # Remove first item (oldest)
+                    self.pending_requests[uid].pop(0)
+                
+                # Clean up empty lists
+                if not self.pending_requests[uid]:
+                    del self.pending_requests[uid]
+                
+                print(f"  [Pending] Unregistered pending request for UID: {uid}")
+    
+    async def cleanup_stale_pending_requests(self, max_age_seconds=30):
+        """Remove stale pending requests that are older than max_age_seconds.
+        
+        Args:
+            max_age_seconds: Maximum age in seconds before a request is considered stale
+        """
+        async with self.pending_requests_lock:
+            now = datetime.now()
+            stale_items = []
+            for uid, pending_list in list(self.pending_requests.items()):
+                # Check each pending request in the list
+                items_to_remove = []
+                for pending in pending_list:
+                    age = (now - pending["timestamp"]).total_seconds()
+                    if age > max_age_seconds:
+                        items_to_remove.append((pending, age))
+                
+                # Remove stale items
+                for pending, age in items_to_remove:
+                    pending_list.remove(pending)
+                    stale_items.append((uid, age))
+                
+                # Clean up empty lists
+                if not pending_list:
+                    del self.pending_requests[uid]
+            
+            for uid, age in stale_items:
+                print(f"  [Pending] Cleaned up stale pending request for UID: {uid} (age: {age:.1f}s)")
+            
+            return len(stale_items)
+    
+    async def match_response_to_pending_request(self, uid, response_data):
+        """Match a response to a pending request by UID.
+        
+        Args:
+            uid: The UID from the response
+            response_data: The response data to deliver
+            
+        Returns:
+            True if matched, False otherwise
+        """
+        async with self.pending_requests_lock:
+            if uid in self.pending_requests and self.pending_requests[uid]:
+                # Match to the first (oldest) pending request for this UID
+                pending = self.pending_requests[uid][0]
+                pending["response_data"] = response_data
+                pending["event"].set()
+                print(f"  [Pending] Matched response to pending request for UID: {uid} (queue size: {len(self.pending_requests[uid])})")
+                # Don't remove yet - let the waiting coroutine clean it up
+                return True
+        return False
+
     async def message_handler(self, event):
         """Handle incoming messages from the bot."""
         message = event.message
@@ -951,6 +1187,28 @@ class TelegramBotListener:
                 # Print formatted TOPUP DONE message
                 formatted_msg = self.format_topup_message(topup_result)
                 print(formatted_msg)
+                
+                # Try to match this response to a pending request by UID
+                # Check for UID in both success and failed status
+                user_uid = None
+                if topup_result.get("user") and topup_result["user"].get("uid"):
+                    user_uid = str(topup_result["user"]["uid"])
+                elif topup_result.get("status") == "failed":
+                    # For failed status, try to extract UID from the original request if available
+                    # The UID should be in the message text or we can try to match by orderId
+                    # But for now, we'll rely on the UID being in the topup_result
+                    pass
+                
+                if user_uid:
+                    response_data = {
+                        "message_id": message.id,
+                        "text": message_text,
+                        "date": message_data["date"],
+                        "raw_data": message_data
+                    }
+                    matched = await self.match_response_to_pending_request(user_uid, response_data)
+                    if matched:
+                        print(f"  [Pending] Response matched to pending request for UID: {user_uid}")
             else:
                 # Print regular message
                 formatted_msg = self.format_message(message)
@@ -1014,6 +1272,18 @@ class TelegramBotListener:
         @self.client.on(events.NewMessage(from_users=self.bot_entity))
         async def handler(event):
             await self.message_handler(event)
+        
+        # Start periodic cleanup task for stale pending requests
+        async def cleanup_task():
+            while True:
+                await asyncio.sleep(60)  # Run cleanup every 60 seconds
+                try:
+                    await self.cleanup_stale_pending_requests(max_age_seconds=30)
+                except Exception as e:
+                    print(f"  [Pending] Error in cleanup task: {e}")
+        
+        # Start cleanup task in background
+        asyncio.create_task(cleanup_task())
         
         # Keep the script running
         await self.client.run_until_disconnected()

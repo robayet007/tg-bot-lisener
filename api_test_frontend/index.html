@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Bot API Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .health-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .health-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .status-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ccc;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online {
+            background: #10b981;
+        }
+
+        .status-indicator.offline {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .health-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .health-item {
+            padding: 10px;
+            background: #f3f4f6;
+            border-radius: 8px;
+        }
+
+        .health-item label {
+            display: block;
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+
+        .health-item span {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .form-section h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .response-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .response-section h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .copy-btn {
+            background: #10b981;
+            padding: 8px 16px;
+            font-size: 0.875rem;
+        }
+
+        .response-content {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .response-content.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .response-content.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .response-content.pending {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .response-empty {
+            text-align: center;
+            color: #9ca3af;
+            padding: 40px;
+            font-style: italic;
+        }
+
+        .error-display {
+            display: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .error-display.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+
+        .error-display.success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+
+        .error-display.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .error-display.warning {
+            background: #fef3c7;
+            color: #92400e;
+            border-left: 4px solid #f59e0b;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .test-connection-btn {
+            background: #10b981;
+            margin-top: 10px;
+        }
+
+        .test-connection-btn:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-section, .response-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Telegram Bot API Tester</h1>
+            <p>Test your deployed Telegram bot API endpoints</p>
+        </div>
+
+        <!-- Error Display -->
+        <div class="error-display" id="errorDisplay" style="display: none;"></div>
+
+        <!-- Health Check Section -->
+        <div class="health-section">
+            <div class="health-status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <div>
+                    <strong id="statusText">Checking status...</strong>
+                    <div style="font-size: 0.875rem; color: #6b7280; margin-top: 4px;">
+                        API: <span id="apiUrl">https://tg-bot-lisener.fly.dev</span>
+                    </div>
+                </div>
+            </div>
+            <div class="health-info" id="healthInfo">
+                <div class="health-item">
+                    <label>App Status</label>
+                    <span id="appStatus">-</span>
+                </div>
+                <div class="health-item">
+                    <label>Bot Initialized</label>
+                    <span id="botStatus">-</span>
+                </div>
+                <div class="health-item">
+                    <label>Listener Running</label>
+                    <span id="listenerStatus">-</span>
+                </div>
+            </div>
+            <button class="btn test-connection-btn" id="testConnectionBtn" style="margin-top: 15px;">
+                🔌 Test Connection
+            </button>
+        </div>
+
+        <div class="grid">
+            <!-- Send Command Form -->
+            <div class="form-section">
+                <h2>📤 Send Command</h2>
+                <form id="commandForm">
+                    <div class="form-group">
+                        <label for="command">Command</label>
+                        <input 
+                            type="text" 
+                            id="command" 
+                            name="command" 
+                            placeholder="e.g., Krate"
+                            required
+                        >
+                    </div>
+                    <button type="submit" class="btn" id="sendCommandBtn">
+                        Send Command
+                    </button>
+                </form>
+            </div>
+
+            <!-- Send Raw Message Form -->
+            <div class="form-section">
+                <h2>💬 Send Raw Message</h2>
+                <form id="rawMessageForm">
+                    <div class="form-group">
+                        <label for="prefix">Prefix</label>
+                        <input 
+                            type="text" 
+                            id="prefix" 
+                            name="prefix" 
+                            placeholder="e.g., ktp"
+                            required
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="uid">UID</label>
+                        <input 
+                            type="text" 
+                            id="uid" 
+                            name="uid" 
+                            placeholder="e.g., 123456789"
+                            required
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="diamonds">Diamonds</label>
+                        <input 
+                            type="text" 
+                            id="diamonds" 
+                            name="diamonds" 
+                            placeholder="e.g., 100"
+                            required
+                        >
+                    </div>
+                    <button type="submit" class="btn" id="sendRawBtn">
+                        Send Raw Message
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Response Display Section -->
+        <div class="response-section">
+            <h2>
+                📋 Response
+                <button class="btn copy-btn" id="copyBtn" style="display: none;">
+                    📋 Copy
+                </button>
+            </h2>
+            <div class="response-content" id="responseContent">
+                <div class="response-empty">No response yet. Send a command or message to see the response here.</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="index.js"></script>
+    <script>
+        // Verify script loaded
+        window.addEventListener('load', () => {
+            if (typeof window.testConnection === 'undefined') {
+                console.error('❌ JavaScript file failed to load!');
+                const errorDiv = document.getElementById('errorDisplay');
+                if (errorDiv) {
+                    errorDiv.textContent = '❌ Error: JavaScript file (index.js) failed to load. Please check the file path and browser console.';
+                    errorDiv.className = 'error-display error';
+                    errorDiv.style.display = 'block';
+                }
+            } else {
+                console.log('✓ JavaScript loaded successfully');
+            }
+        });
+    </script>
+</body>
+</html>

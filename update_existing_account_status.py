@@ -6,6 +6,7 @@ Run this script to parse and add account_status to existing messages
 from pymongo import MongoClient
 import config
 import re
+import sys
 
 
 def parse_account_status(text):
@@ -70,10 +71,15 @@ def parse_account_status(text):
 def main():
     """Update existing documents with account_status."""
     try:
-        print("Connecting to MongoDB...")
+        # MONGODB_URI is required
+        if not config.MONGODB_URI:
+            print("ERROR: MONGODB_URI environment variable is required.")
+            print("Please set it to your MongoDB connection string (e.g., mongodb+srv://user:pass@cluster.mongodb.net/).")
+            sys.exit(1)
+        
+        print("Connecting to MongoDB using URI...")
         client = MongoClient(
-            host=config.MONGODB_HOST,
-            port=config.MONGODB_PORT,
+            config.MONGODB_URI,
             serverSelectionTimeoutMS=5000
         )
         client.server_info()

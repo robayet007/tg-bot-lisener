@@ -1,0 +1,2 @@
+put telegram_listener.session /app/sessions/telegram_listener.session
+quit

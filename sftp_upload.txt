@@ -1,0 +1,22 @@
+SFTP Upload Commands
+====================
+
+Step 1: Open SFTP shell
+-----------------------
+fly ssh sftp shell -a tg-bot-lisener
+
+Step 2: When you see the "»" prompt, type:
+-------------------------------------------
+put telegram_listener.session /app/sessions/telegram_listener.session
+
+Step 3: Wait for upload to complete, then type:
+-----------------------------------------------
+quit
+
+Step 4: Verify upload
+---------------------
+fly ssh console -a tg-bot-lisener -C "ls -lah /app/sessions/"
+
+Step 5: Check status (wait 30-60 seconds for retry)
+---------------------------------------------------
+curl https://tg-bot-lisener.fly.dev/health
