@@ -1,5 +1,5 @@
-// API Configuration
-const API_BASE_URL = 'https://tg-bot-lisener.fly.dev';
+// API Configuration - Use relative URLs to work on any domain (localhost, Fly.io, Vercel)
+const API_BASE_URL = 'https://tg-bot-lisener.vercel.app'; // Empty string = same origin
 
 // Debug mode (can be enabled via console: window.DEBUG = true)
 window.DEBUG = window.DEBUG || false;

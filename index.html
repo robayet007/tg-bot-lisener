@@ -326,8 +326,8 @@
     </div>
 
     <script>
-      // Use relative URLs - works on same domain (both localhost and Fly.io)
-      const API_BASE = "https://tg-bot-lisener.fly.dev";
+      // Use relative URLs - works on same domain (both localhost, Fly.io, and Vercel)
+      const API_BASE = "https://tg-bot-lisener.vercel.app"; // Empty string = same origin
       let responseCount = 0;
 
       function formatResponse(response) {
