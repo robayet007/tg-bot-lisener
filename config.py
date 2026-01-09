@@ -72,3 +72,57 @@ def get_session_file_info():
     
     return info
 
+
+def delete_session_file():
+    """Delete the session file.
+    
+    Returns:
+        tuple: (success: bool, message: str)
+    """
+    session_path = get_session_file_path()
+    if not os.path.exists(session_path):
+        return False, f"Session file does not exist: {session_path}"
+    
+    try:
+        # Get file size before deletion for logging
+        file_size = os.path.getsize(session_path)
+        os.remove(session_path)
+        return True, f"Deleted session file: {session_path} ({file_size} bytes)"
+    except Exception as e:
+        return False, f"Error deleting session file {session_path}: {e}"
+
+
+def delete_session_file_safe():
+    """Safely delete the session file and its journal file if it exists.
+    
+    This function handles errors gracefully and also deletes the session journal file.
+    
+    Returns:
+        tuple: (success: bool, deleted_files: list, errors: list)
+    """
+    deleted_files = []
+    errors = []
+    
+    # Delete main session file
+    session_path = get_session_file_path()
+    if os.path.exists(session_path):
+        try:
+            file_size = os.path.getsize(session_path)
+            os.remove(session_path)
+            deleted_files.append(f"{session_path} ({file_size} bytes)")
+        except Exception as e:
+            errors.append(f"Error deleting {session_path}: {e}")
+    
+    # Delete session journal file if it exists
+    journal_path = session_path + "-journal"
+    if os.path.exists(journal_path):
+        try:
+            journal_size = os.path.getsize(journal_path)
+            os.remove(journal_path)
+            deleted_files.append(f"{journal_path} ({journal_size} bytes)")
+        except Exception as e:
+            errors.append(f"Error deleting {journal_path}: {e}")
+    
+    success = len(deleted_files) > 0 and len(errors) == 0
+    return success, deleted_files, errors
+

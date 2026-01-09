@@ -120,12 +120,28 @@ def check_and_authenticate():
                         print(f"⚠ Session file path: {session_info['path']}")
                         if session_info.get('modified'):
                             print(f"⚠ Session file modified: {session_info['modified']}")
+                        
+                        # Delete invalid session file to prevent infinite retry loops
+                        print(f"⚠ Deleting invalid session file to allow fresh upload...")
+                        success, deleted_files, errors = config.delete_session_file_safe()
+                        
+                        if success and deleted_files:
+                            print(f"✓ Deleted invalid session file(s):")
+                            for deleted_file in deleted_files:
+                                print(f"  - {deleted_file}")
+                        elif errors:
+                            print(f"⚠ Warning: Some errors occurred during deletion:")
+                            for error in errors:
+                                print(f"  - {error}")
+                        
                         print("⚠ This usually means:")
                         print("  1. Session file is expired or invalid")
                         print("  2. Session file is from a different account")
                         print("  3. Session file needs to be re-authenticated")
                         print("⚠ Please authenticate manually by running the app locally first,")
                         print("   then upload the session file to Fly.io volume.")
+                        print("⚠ Upload command: fly ssh sftp shell -a tg-bot-lisener")
+                        print("⚠ Then in SFTP: put telegram_listener.session /app/sessions/telegram_listener.session")
                         await temp_listener.client.disconnect()
                         return False
                     
@@ -225,24 +241,42 @@ def run_listener():
     """Run the bot listener in a separate thread."""
     global listener_loop, bot_listener, init_error, last_init_attempt
     listener_loop = None
+    thread_start_time = datetime.now()
+    print(f"[Listener] Thread started at {thread_start_time.strftime('%H:%M:%S')}")
+    
     try:
+        loop_start = datetime.now()
+        print("[Listener] Creating event loop...")
         listener_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(listener_loop)
+        elapsed = (datetime.now() - loop_start).total_seconds()
+        print(f"[Listener] Event loop created ({elapsed:.2f}s)")
         
         async def start_listener():
             global bot_listener, init_error, last_init_attempt
+            listener_start_time = datetime.now()
             try:
-                print("[Listener] Creating TelegramBotListener instance...")
+                step_start = datetime.now()
+                print(f"[Listener] Creating TelegramBotListener instance...")
                 bot_listener = TelegramBotListener()
-                print("[Listener] Initializing bot listener...")
+                elapsed = (datetime.now() - step_start).total_seconds()
+                print(f"[Listener] TelegramBotListener instance created ({elapsed:.2f}s)")
+                
+                step_start = datetime.now()
+                print(f"[Listener] Starting initialization...")
                 # Initialize first (this connects and gets bot_entity)
                 await bot_listener.initialize()
+                elapsed = (datetime.now() - step_start).total_seconds()
                 print(f"[Listener] ✓ Bot listener initialized! Bot entity: {bot_listener.bot_entity}")
+                print(f"[Listener] Initialization took {elapsed:.1f}s")
+                
                 # Clear any previous errors on success
                 init_error = None
                 last_init_attempt = datetime.now().isoformat()
+                
                 # Now start listening (this blocks until disconnected)
-                print("[Listener] Starting to listen for messages...")
+                total_elapsed = (datetime.now() - listener_start_time).total_seconds()
+                print(f"[Listener] Starting to listen for messages... (total setup time: {total_elapsed:.1f}s)")
                 await bot_listener.start_listening()
             except KeyboardInterrupt:
                 print("[Listener] Listener stopped by user")
@@ -257,9 +291,12 @@ def run_listener():
                 last_init_attempt = datetime.now().isoformat()
         
         listener_loop.run_until_complete(start_listener())
+        total_elapsed = (datetime.now() - thread_start_time).total_seconds()
+        print(f"[Listener] Listener thread completed (total runtime: {total_elapsed:.1f}s)")
     except Exception as e:
+        total_elapsed = (datetime.now() - thread_start_time).total_seconds()
         error_msg = f"ERROR in listener thread: {e}"
-        print(f"[Listener] ✗ {error_msg}")
+        print(f"[Listener] ✗ {error_msg} (after {total_elapsed:.1f}s)")
         import traceback
         traceback.print_exc()
         global init_error, last_init_attempt
@@ -325,8 +362,16 @@ def retry_bot_listener_init():
         try:
             # Check if listener thread is still running
             if listener_thread and listener_thread.is_alive():
-                print("[Retry] Listener thread is still running, waiting...")
-                continue
+                # Thread is still alive - check if it's making progress
+                if bot_listener and bot_listener.bot_entity:
+                    # Already initialized, stop retry
+                    print("[Retry] Bot listener is initialized. Stopping retry mechanism.")
+                    retry_active = False
+                    break
+                else:
+                    # Thread is alive but not initialized yet - give it more time
+                    print("[Retry] Listener thread is still running but not initialized yet, waiting...")
+                    continue
             
             # If previous thread died, wait a bit before retrying to avoid rapid retries
             if listener_thread and not listener_thread.is_alive():
@@ -337,16 +382,20 @@ def retry_bot_listener_init():
             listener_thread = threading.Thread(target=run_listener, daemon=True)
             listener_thread.start()
             
-            # Wait longer to see if it initializes (initialization can take 10-15 seconds)
-            # Check every second for up to 15 seconds
+            # Wait longer to see if it initializes (initialization can take 30-60 seconds)
+            # Check every second for up to 30 seconds
             initialized = False
-            for wait_iter in range(15):
+            for wait_iter in range(30):
                 time.sleep(1)
                 if bot_listener and bot_listener.bot_entity:
                     print(f"[Retry] ✓ Bot listener initialized successfully on attempt {retry_count}!")
                     retry_active = False
                     init_error = None
                     initialized = True
+                    break
+                # Check if thread is still alive - if it died, initialization failed
+                if listener_thread and not listener_thread.is_alive():
+                    print(f"[Retry] Listener thread died during initialization (after {wait_iter + 1}s)")
                     break
             
             if not initialized:
@@ -393,9 +442,9 @@ def start_listener_thread():
     listener_thread = threading.Thread(target=run_listener, daemon=True)
     listener_thread.start()
     
-    # Wait for listener to initialize (check every 0.5 seconds, max 30 seconds)
+    # Wait for listener to initialize (check every 0.5 seconds, max 60 seconds)
     print("[API] Waiting for bot listener to initialize...")
-    max_wait = 30
+    max_wait = 60
     waited = 0
     while waited < max_wait:
         time.sleep(0.5)
@@ -403,7 +452,7 @@ def start_listener_thread():
         if bot_listener and bot_listener.bot_entity:
             print(f"[API] Bot listener initialized successfully after {waited:.1f} seconds")
             return
-        if waited % 2 == 0:  # Print every 2 seconds
+        if waited % 5 == 0:  # Print every 5 seconds
             print(f"[API] Still waiting for bot listener... ({waited:.0f}s)")
     
     if bot_listener and bot_listener.bot_entity:

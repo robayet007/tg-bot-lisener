@@ -129,30 +129,43 @@ class TelegramBotListener:
 
     async def initialize(self):
         """Initialize the Telegram client and authenticate."""
-        print("Connecting to Telegram...")
+        start_time = datetime.now()
+        print(f"[Init] Starting initialization at {start_time.strftime('%H:%M:%S')}")
         
-        # Connect to MongoDB first (non-blocking - continue even if it fails)
+        # Step 1: Connect to MongoDB
+        step_start = datetime.now()
+        print("[Init] Step 1/4: Connecting to MongoDB...")
         try:
             self.connect_mongodb()
+            elapsed = (datetime.now() - step_start).total_seconds()
+            print(f"[Init] Step 1/4: MongoDB connection completed ({elapsed:.1f}s)")
         except Exception as e:
-            print(f"⚠ Warning: MongoDB connection failed: {e}")
+            elapsed = (datetime.now() - step_start).total_seconds()
+            print(f"[Init] Step 1/4: MongoDB connection failed ({elapsed:.1f}s) - {e}")
             print("⚠ Continuing without MongoDB - messages will only be printed to console")
             self.mongo_client = None
             self.mongo_collection = None
         
-        # Connect first
+        # Step 2: Connect to Telegram
+        step_start = datetime.now()
+        print("[Init] Step 2/4: Connecting to Telegram...")
         await self.client.connect()
+        elapsed = (datetime.now() - step_start).total_seconds()
+        print(f"[Init] Step 2/4: Telegram connection completed ({elapsed:.1f}s)")
         
-        # Try to get user info to check if session is valid
-        # This provides better diagnostics than just is_user_authorized()
+        # Step 3: Verify session and get user info
+        step_start = datetime.now()
+        print("[Init] Step 3/4: Verifying session and getting user info...")
         try:
             me = await self.client.get_me()
             if me:
+                elapsed = (datetime.now() - step_start).total_seconds()
+                print(f"[Init] Step 3/4: Session verified ({elapsed:.1f}s)")
                 print(f"✓ Session is valid! Connected as: {me.first_name} (@{me.username if me.username else 'no username'})")
                 # If we can get_me(), we're authorized, so skip the is_user_authorized() check
         except Exception as session_check_error:
-            # If get_me() fails, we're likely not authorized
-            print(f"⚠ Could not get user info: {session_check_error}")
+            elapsed = (datetime.now() - step_start).total_seconds()
+            print(f"[Init] Step 3/4: Could not get user info ({elapsed:.1f}s) - {session_check_error}")
             # Continue to check is_user_authorized() below
         
         # Check if we need to authenticate
@@ -173,16 +186,33 @@ class TelegramBotListener:
                     except Exception:
                         pass
                 
+                # Delete invalid session file to prevent infinite retry loops
+                print(f"\n⚠ Session file exists ({session_size} bytes) but is not authorized.")
+                print(f"⚠ Deleting invalid session file to allow fresh upload...")
+                success, deleted_files, errors = config.delete_session_file_safe()
+                
+                if success and deleted_files:
+                    print(f"✓ Deleted invalid session file(s):")
+                    for deleted_file in deleted_files:
+                        print(f"  - {deleted_file}")
+                elif errors:
+                    print(f"⚠ Warning: Some errors occurred during deletion:")
+                    for error in errors:
+                        print(f"  - {error}")
+                
                 error_msg = (
-                    f"Session file exists ({session_size} bytes) but is not authorized.\n"
+                    f"Session file was invalid and has been deleted.\n"
                     f"Session file path: {session_path}\n"
+                    f"Session file size: {session_size} bytes\n"
                     f"Session file modified: {session_modified if session_modified else 'unknown'}\n"
                     f"\nThis usually means:\n"
                     f"  1. Session file is expired or invalid\n"
                     f"  2. Session file is from a different account\n"
                     f"  3. Session file needs to be re-authenticated\n"
                     f"  4. Session file format is incompatible\n"
-                    f"\nSolution: Authenticate locally and upload a fresh session file."
+                    f"\nSolution: Authenticate locally and upload a fresh session file.\n"
+                    f"Upload command: fly ssh sftp shell -a tg-bot-lisener\n"
+                    f"Then in SFTP: put telegram_listener.session /app/sessions/telegram_listener.session"
                 )
                 print(f"\n⚠ {error_msg}")
                 await self.client.disconnect()
@@ -212,14 +242,24 @@ class TelegramBotListener:
         
         print("Successfully connected to Telegram!")
         
-        # Get bot entity
+        # Step 4: Get bot entity
+        step_start = datetime.now()
+        print(f"[Init] Step 4/4: Getting bot entity (@{self.bot_username})...")
         try:
             self.bot_entity = await self.client.get_entity(self.bot_username)
+            elapsed = (datetime.now() - step_start).total_seconds()
+            print(f"[Init] Step 4/4: Bot entity retrieved ({elapsed:.1f}s)")
             print(f"Bot found: {self.bot_entity.first_name} (@{self.bot_username})")
         except Exception as e:
+            elapsed = (datetime.now() - step_start).total_seconds()
+            print(f"[Init] Step 4/4: Error finding bot ({elapsed:.1f}s) - {e}")
             print(f"Error finding bot @{self.bot_username}: {e}")
             print("Please check the bot username in config.py")
             raise
+        
+        # Final summary
+        total_elapsed = (datetime.now() - start_time).total_seconds()
+        print(f"[Init] ✓ Initialization completed successfully in {total_elapsed:.1f}s")
 
     def extract_message_data(self, message):
         """Extract message data for MongoDB storage."""
